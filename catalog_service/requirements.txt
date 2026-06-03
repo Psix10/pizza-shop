@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+pydantic
+aio-pika==9.5.7

@@ -1,0 +1,491 @@
+version: "3.9"
+
+services:
+  postgres_auth_db:
+    image: postgres:17
+    container_name: pizza_postgres_auth
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  auth_service_pizza:
+    build:
+      context: ./auth_service
+      dockerfile: Dockerfile
+    container_name: auth_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8001
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_auth_db:5432/${POSTGRES_DB}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres_auth_db:
+        condition: service_healthy
+    volumes:
+      - ./auth_service:/app
+      - ./common:/app/common
+
+  postgres_profile_db:
+    image: postgres:17
+    container_name: pizza_postgres_profile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_profile_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  profile_service_pizza:
+    build:
+      context: ./profile_service
+      dockerfile: Dockerfile
+    container_name: profile_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8002
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_profile_db:5432/${POSTGRES_DB}
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres_profile_db:
+        condition: service_healthy
+    volumes:
+      - ./profile_service:/app
+      - ./common:/app/common
+
+  postgres_catalog_db:
+    image: postgres:17
+    container_name: pizza_postgres_catalog
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_catalog_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  catalog_service_pizza:
+    build:
+      context: ./catalog_service
+      dockerfile: Dockerfile
+    container_name: catalog_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8003
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_catalog_db:5432/${POSTGRES_DB}
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres_catalog_db:
+        condition: service_healthy
+    volumes:
+      - ./catalog_service:/app
+      - ./common:/app/common
+
+  postgres_store_db:
+    image: postgres:17
+    container_name: pizza_postgres_store
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5438:5432"
+    volumes:
+      - postgres_store_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  store_service_pizza:
+    build:
+      context: ./store_service
+      dockerfile: Dockerfile
+    container_name: store_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8004
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_store_db:5432/${POSTGRES_DB}
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres_store_db:
+        condition: service_healthy
+    volumes:
+      - ./store_service:/app
+      - ./common:/app/common
+
+  postgres_order_db:
+    image: postgres:17
+    container_name: pizza_postgres_order
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5439:5432"
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  order_service_pizza:
+    build:
+      context: ./order_service
+      dockerfile: Dockerfile
+    container_name: order_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8005
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_order_db:5432/${POSTGRES_DB}
+      STORE_SERVICE_URL: http://store_service_pizza:8004
+      PROFILE_SERVICE_URL: http://profile_service_pizza:8002
+      CATALOG_SERVICE_URL: http://catalog_service_pizza:8003
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      RABBITMQ_EXCHANGE: domain_events
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres_order_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - ./order_service:/app
+      - ./common:/app/common
+
+  postgres_kitchen_db:
+    image: postgres:17
+    container_name: pizza_postgres_kitchen
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5440:5432"
+    volumes:
+      - postgres_kitchen_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  kitchen_service_pizza:
+    build:
+      context: ./kitchen_service
+      dockerfile: Dockerfile
+    container_name: kitchen_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8006
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_kitchen_db:5432/${POSTGRES_DB}
+      ORDER_SERVICE_URL: http://order_service_pizza:8005
+      DELIVERY_SERVICE_URL: http://delivery_service_pizza:8007
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      RABBITMQ_EXCHANGE: domain_events
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres_kitchen_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - ./kitchen_service:/app
+      - ./common:/app/common
+
+  postgres_delivery_db:
+    image: postgres:17
+    container_name: pizza_postgres_delivery
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5441:5432"
+    volumes:
+      - postgres_delivery_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  delivery_service_pizza:
+    build:
+      context: ./delivery_service
+      dockerfile: Dockerfile
+    container_name: delivery_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8007
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_delivery_db:5432/${POSTGRES_DB}
+      ORDER_SERVICE_URL: http://order_service_pizza:8005
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      RABBITMQ_EXCHANGE: domain_events
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres_delivery_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - ./delivery_service:/app
+      - ./common:/app/common
+
+  postgres_support_chat_db:
+    image: postgres:17
+    container_name: pizza_postgres_support_chat
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5442:5432"
+    volumes:
+      - postgres_support_chat_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  support_chat_service_pizza:
+    build:
+      context: ./support_chat_service
+      dockerfile: Dockerfile
+    container_name: support_chat_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8008
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_support_chat_db:5432/${POSTGRES_DB}
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres_support_chat_db:
+        condition: service_healthy
+    volumes:
+      - ./support_chat_service:/app
+      - ./common:/app/common
+
+  postgres_notification_db:
+    image: postgres:17
+    container_name: pizza_postgres_notification
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5443:5432"
+    volumes:
+      - postgres_notification_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  notification_service_pizza:
+    build:
+      context: ./notification_service
+      dockerfile: Dockerfile
+    container_name: notification_service_pizza
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8009
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_notification_db:5432/${POSTGRES_DB}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      RABBITMQ_EXCHANGE: domain_events
+    ports:
+      - "8009:8009"
+    depends_on:
+      postgres_notification_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - ./notification_service:/app
+      - ./common:/app/common
+
+  gateway:
+    build:
+      context: ./gateway_service
+      dockerfile: Dockerfile
+    container_name: gateway
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVICE_PORT: 8000
+      AUTH_SERVICE_URL: http://auth_service_pizza:8001
+      PROFILE_SERVICE_URL: http://profile_service_pizza:8002
+      CATALOG_SERVICE_URL: http://catalog_service_pizza:8003
+      STORE_SERVICE_URL: http://store_service_pizza:8004
+      ORDER_SERVICE_URL: http://order_service_pizza:8005
+      KITCHEN_SERVICE_URL: http://kitchen_service_pizza:8006
+      DELIVERY_SERVICE_URL: http://delivery_service_pizza:8007
+      SUPPORT_CHAT_SERVICE_URL: http://support_chat_service_pizza:8008
+      NOTIFICATION_SERVICE_URL: http://notification_service_pizza:8009
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: HS256
+      JWT_ISSUER: auth_service
+      JWT_AUDIENCE: internal_api
+    ports:
+      - "8000:8000"
+    depends_on:
+      auth_service_pizza:
+        condition: service_started
+      profile_service_pizza:
+        condition: service_started
+      catalog_service_pizza:
+        condition: service_started
+      store_service_pizza:
+        condition: service_started
+      order_service_pizza:
+        condition: service_started
+      kitchen_service_pizza:
+        condition: service_started
+      delivery_service_pizza:
+        condition: service_started
+      support_chat_service_pizza:
+        condition: service_started
+      notification_service_pizza:
+        condition: service_started
+    volumes:
+      - ./gateway_service:/app
+      - ./common:/app/common
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_pizza
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+volumes:
+  postgres_auth_data:
+  postgres_profile_data:
+  postgres_catalog_data:
+  postgres_store_data:
+  postgres_order_data:
+  postgres_kitchen_data:
+  postgres_delivery_data:
+  postgres_support_chat_data:
+  postgres_notification_data:
