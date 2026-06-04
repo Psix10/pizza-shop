@@ -5,20 +5,18 @@ from datetime import date
 
 class ProfileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     user_id: int
     avatar_url: str | None = None
     birth_date: date | None = None
-    email: str | None = None
-    phone: str | None = None
     messenger: str | None = None
-
 
 class ProfileUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    
+
     avatar_url: str | None = None
-    birth_date: datetime | None = None
+    birth_date: date | None = None
+    messenger: str | None = None
 
 
 class AddressRead(BaseModel):
@@ -69,7 +67,6 @@ class AddressUpdateRequest(BaseModel):
 class ContactsRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    phone: str | None = None
     messenger: str | None = None
     avatar_url: str | None = None
     birth_date: date | None = None
@@ -77,8 +74,7 @@ class ContactsRead(BaseModel):
 
 class ContactsUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    
-    phone: str | None = None
+
     messenger: str | None = None
     avatar_url: str | None = None
     birth_date: date | None = None

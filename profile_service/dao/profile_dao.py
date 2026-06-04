@@ -15,18 +15,18 @@ class ProfileDAO:
     async def get_or_create_profile(self, user_id: int) -> Profile:
         stmt = select(Profile).where(Profile.user_id == user_id)
         profile = await self.session.scalar(stmt)
+
         if profile is None:
             profile = Profile(
                 user_id=user_id,
                 avatar_url=None,
                 birth_date=None,
-                email=None,
-                phone=None,
                 messenger=None,
             )
             self.session.add(profile)
             await self.session.commit()
             await self.session.refresh(profile)
+
         return profile
 
     async def get_addresses(self, user_id: int) -> list[Address]:
@@ -141,8 +141,6 @@ class ProfileDAO:
     ) -> Profile:
         profile = await self.get_or_create_profile(user_id)
 
-        if data.phone is not None:
-            profile.phone = data.phone
         if data.messenger is not None:
             profile.messenger = data.messenger
         if data.birth_date is not None:

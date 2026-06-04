@@ -1,12 +1,13 @@
-# core/security.py
 import os
 from typing import Any
 
 from fastapi import HTTPException, Request, status
 from jose import JWTError, jwt
 
+
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
 
 def decode_jwt_token(token: str) -> dict[str, Any]:
     try:
@@ -16,32 +17,38 @@ def decode_jwt_token(token: str) -> dict[str, Any]:
             algorithms=[JWT_ALGORITHM],
             options={"verify_aud": False},
         )
-    except JWTError:
+    except JWTError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-        )
+        ) from exc
+
 
 PUBLIC_PATHS = {
     "/api/auth/register/customer",
+    "/api/auth/register/courier",
     "/api/auth/login",
     "/api/auth/refresh",
     "/api/auth/logout",
-    "/api/profile/me",
-    "/api/profile/addresses",
-    "/api/profile/contacts",
-}
-PUBLIC_PREFIXES = {
     "/api/docs",
     "/api/openapi.json",
+    "/docs",
+    "/openapi.json",
+    "/health",
+}
+
+PUBLIC_PREFIXES = {
+    "/api/auth",
     "/api/catalog",
     "/api/stores",
 }
+
 
 def is_public_path(path: str) -> bool:
     if path in PUBLIC_PATHS:
         return True
     return any(path.startswith(prefix) for prefix in PUBLIC_PREFIXES)
+
 
 async def get_auth_context(request: Request) -> dict[str, Any] | None:
     path = request.url.path

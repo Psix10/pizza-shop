@@ -23,8 +23,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Kitchen Service", lifespan=lifespan)
 app.middleware("http")(correlation_id_middleware)
 
-app.include_router(internal_events_router, prefix="/api/v1")
-app.include_router(kitchen_router, prefix="/api/v1")
+app.include_router(internal_events_router)
+app.include_router(kitchen_router)
 
 
 @app.get("/health")

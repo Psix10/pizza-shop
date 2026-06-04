@@ -224,7 +224,7 @@ services:
       postgres_order_db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./order_service:/app
       - ./common:/app/common
@@ -274,7 +274,7 @@ services:
       postgres_kitchen_db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./kitchen_service:/app
       - ./common:/app/common
@@ -323,7 +323,7 @@ services:
       postgres_delivery_db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./delivery_service:/app
       - ./common:/app/common
@@ -415,7 +415,7 @@ services:
       postgres_notification_db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./notification_service:/app
       - ./common:/app/common
@@ -478,6 +478,12 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
 volumes:
   postgres_auth_data:

@@ -5,7 +5,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import Response
 
 from common.correlation import CORRELATION_HEADER
-from .routing import resolve_service
+from services.routing import resolve_service
 
 
 GATEWAY_TIMEOUT = 10.0

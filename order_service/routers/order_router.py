@@ -132,7 +132,9 @@ async def checkout(
         zones = await get_delivery_zones(store_id)
         if zones:
             max_eta = max(zone["max_eta"] for zone in zones)
-            promised_at = datetime.now(UTC) + timedelta(minutes=max_eta)
+            promised_at = (
+                datetime.now(UTC) + timedelta(minutes=max_eta)
+            ).replace(tzinfo=None)
     except Exception:
         promised_at = None
 

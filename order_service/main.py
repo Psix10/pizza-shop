@@ -21,10 +21,10 @@ app = FastAPI(title="Order Service", lifespan=lifespan)
 
 app.middleware("http")(correlation_id_middleware)
 
-app.include_router(cart_router)
-app.include_router(order_router)
-app.include_router(internal_orders_router)
-app.include_router(internal_outbox_router)
+app.include_router(cart_router, prefix="/api/v1")
+app.include_router(order_router, prefix="/api/v1")
+app.include_router(internal_orders_router, prefix="/api/v1")
+app.include_router(internal_outbox_router, prefix="/api/v1")
 
 
 @app.get("/health")

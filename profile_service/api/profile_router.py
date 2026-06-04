@@ -39,14 +39,16 @@ async def update_me(
     dao: ProfileDAO = Depends(get_profile_dao),
 ):
     profile = await dao.get_or_create_profile(user_id)
-    if data.first_name is not None:
-        profile.first_name = data.first_name
-    if data.last_name is not None:
-        profile.last_name = data.last_name
+
     if data.avatar_url is not None:
         profile.avatar_url = data.avatar_url
     if data.birth_date is not None:
         profile.birth_date = data.birth_date
+    if data.messenger is not None:
+        profile.messenger = data.messenger
+
+    await dao.session.commit()
+    await dao.session.refresh(profile)
     return profile
 
 
@@ -109,8 +111,9 @@ async def get_contacts(
 ):
     profile = await dao.get_contacts(user_id)
     return ContactsRead(
-        phone=profile.phone,
         messenger=profile.messenger,
+        avatar_url=profile.avatar_url,
+        birth_date=profile.birth_date,
     )
 
 
@@ -122,7 +125,6 @@ async def update_contacts(
 ):
     profile = await dao.update_contacts(user_id, data)
     return ContactsRead(
-        phone=profile.phone,
         messenger=profile.messenger,
         avatar_url=profile.avatar_url,
         birth_date=profile.birth_date,
