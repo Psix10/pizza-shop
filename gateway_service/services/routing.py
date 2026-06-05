@@ -14,6 +14,8 @@ SERVICE_MAP = {
     "/delivery": settings.DELIVERY_SERVICE_URL,
     "/support": settings.SUPPORT_CHAT_SERVICE_URL,
     "/notifications": settings.NOTIFICATION_SERVICE_URL,
+    "/internal/events": settings.NOTIFICATION_SERVICE_URL,
+
 }
 
 

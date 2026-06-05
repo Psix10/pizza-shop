@@ -24,30 +24,6 @@ def get_broker_event_relay() -> BrokerEventRelay:
 
 
 @router.post("/flush")
-async def flush_outbox(
-    request: Request,
-    session: AsyncSession = Depends(get_session),
-    outbox_dao: OutboxDAO = Depends(get_outbox_dao),
-    relay: BrokerEventRelay = Depends(get_broker_event_relay),
-):
-    events = await outbox_dao.lock_pending_events(limit=50)
-
-    published = 0
-    failed = 0
-    correlation_id = getattr(request.state, "correlation_id", None)
-
-    for event in events:
-        try:
-            await relay.publish(event, correlation_id=correlation_id)
-            await outbox_dao.mark_as_published(event)
-            published += 1
-        except Exception as e:
-            await outbox_dao.mark_as_failed(event, str(e))
-            failed += 1
-
-    await session.commit()
-    return {
-        "processed": len(events),
-        "published": published,
-        "failed": failed,
-    }
+async def flush_outbox(request: Request):
+    dispatcher = request.app.state.outbox_dispatcher
+    return await dispatcher.flush_once()

@@ -29,7 +29,7 @@ async def create_delivery_job(
 
     async with httpx.AsyncClient(timeout=5.0) as client:
         response = await client.post(
-            f"{DELIVERY_SERVICE_URL}/api/v1/delivery/jobs/internal",
+            f"{DELIVERY_SERVICE_URL}/delivery/jobs/internal",
             json=payload,
             headers=headers,
         )

@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import json
-
-
 from datetime import datetime, UTC
 
 from sqlalchemy import select
@@ -32,10 +30,12 @@ class OutboxDAO:
         event.published_at = datetime.now(UTC)
         await self.session.flush()
 
-    async def mark_as_failed(self, event: OutboxEvent) -> None:
+    async def mark_as_failed(self, event: OutboxEvent, error: str | None = None) -> None:
         event.status = "failed"
+        if hasattr(event, "error_message"):
+            event.error_message = error
         await self.session.flush()
-    
+
     async def save_outbox_event(self, event_name: str, payload: dict) -> OutboxEvent:
         event = OutboxEvent(
             event_name=event_name,

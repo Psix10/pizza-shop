@@ -1,7 +1,6 @@
 import httpx
 
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.db import get_session
@@ -66,9 +65,12 @@ async def start_kitchen_job(
 @router.post("/{job_id}/complete", response_model=KitchenJobRead)
 async def complete_kitchen_job(
     job_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     dao: KitchenDAO = Depends(get_kitchen_dao),
 ):
+    correlation_id = getattr(request.state, "correlation_id", None)
+
     job = await dao.complete_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Kitchen job not found")
@@ -76,13 +78,14 @@ async def complete_kitchen_job(
     try:
         await update_order_status(
             order_id=job.order_id,
-            status_value="ready_for_delivery",
+            status="delivery_pending",
+            correlation_id=correlation_id,
         )
 
         await create_delivery_job(
             order_id=job.order_id,
             store_id=job.store_id,
-            address_id=job.address_id,  # см. ниже важный момент
+            address_id=job.address_id,
         )
     except httpx.HTTPError:
         raise HTTPException(

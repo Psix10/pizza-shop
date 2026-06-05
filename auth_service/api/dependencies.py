@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from collections.abc import Callable
 
 from db.db import get_session
 from dao.user_dao import UserDAO
@@ -100,3 +101,27 @@ async def get_current_user(
 
     return user
 
+
+def get_user_permissions(user: User) -> set[str]:
+    perms = set()
+    for role in getattr(user, "roles", []):
+        for rp in getattr(role, "role_permissions", []):
+            if rp.permission:
+                perms.add(rp.permission.code)
+    return perms
+
+
+def require_permissions(*required_permissions: str) -> Callable:
+    async def checker(current_user: User = Depends(get_current_user)) -> User:
+        user_permissions = get_user_permissions(current_user)
+        missing = [
+            perm for perm in required_permissions
+            if perm not in user_permissions
+        ]
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing permissions: {', '.join(missing)}",
+            )
+        return current_user
+    return checker

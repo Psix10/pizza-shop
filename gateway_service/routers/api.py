@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 
 from core.config import settings
 from core.security import get_auth_context
+from core.rbac import enforce_rbac
 from services.proxy_service import forward_request
-
 
 router = APIRouter()
 
@@ -12,6 +12,12 @@ router = APIRouter()
 @router.get("/api/me")
 async def get_full_me(request: Request):
     auth_context = await get_auth_context(request)
+    if auth_context is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
     user_id = auth_context["sub"]
 
     async with httpx.AsyncClient(base_url=settings.AUTH_SERVICE_URL, timeout=5.0) as client:
@@ -55,10 +61,11 @@ async def get_full_me(request: Request):
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 )
 async def proxy_all(request: Request, full_path: str):
-    external_path = "/api/" + full_path
     auth_context = await get_auth_context(request)
 
     internal_path = "/" + full_path
+
+    enforce_rbac(internal_path, auth_context)
 
     return await forward_request(
         request=request,

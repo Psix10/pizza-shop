@@ -58,7 +58,7 @@ async def checkout(
         operation="checkout",
     )
     if existing_key and existing_key.order_id is not None:
-        existing_order = await order_dao.get_order_by_id_for_customer(
+        existing_order = await order_dao.get_order_for_customer(
             existing_key.order_id,
             customer_id,
         )

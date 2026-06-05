@@ -255,38 +255,11 @@ class OrderDAO:
         if order.status == status_value:
             return order
 
-        order.status = status_value
+        if changed_at is None:
+            changed_at = datetime.now(UTC)
 
-        status_rec = OrderStatusHistory(
-            order_id=order.id,
-            status=status_value,
-            changed_by=changed_by,
-            changed_at=changed_at or datetime.now(UTC),
-        )
-        self.session.add(status_rec)
-
-        await self.session.flush()
-        return order
-    
-    async def update_order_status_internal(
-        self,
-        order_id: int,
-        status_value: str,
-        changed_by: int | None = None,
-        changed_at: datetime | None = None,
-    ) -> Order | None:
-        stmt = (
-            select(Order)
-            .where(Order.id == order_id)
-            .options(selectinload(Order.items))
-        )
-        result = await self.session.execute(stmt)
-        order = result.scalar_one_or_none()
-        if not order:
-            return None
-
-        if order.status == status_value:
-            return order
+        if changed_at.tzinfo is not None:
+            changed_at = changed_at.astimezone(UTC).replace(tzinfo=None)
 
         order.status = status_value
 
@@ -294,19 +267,9 @@ class OrderDAO:
             order_id=order.id,
             status=status_value,
             changed_by=changed_by,
-            changed_at=changed_at or datetime.now(UTC),
+            changed_at=changed_at,
         )
         self.session.add(status_rec)
 
         await self.session.flush()
         return order
-    
-    async def get_order_by_id_for_customer(self, order_id: int, customer_id: int) -> Order | None:
-        stmt = (
-            select(Order)
-            .where(Order.id == order_id, Order.customer_id == customer_id)
-            .options(selectinload(Order.items))
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
-
