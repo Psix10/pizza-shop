@@ -14,7 +14,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 def get_current_user_id() -> int:
-    return 1
+    return 0
 
 
 def get_notification_dao(session: AsyncSession = Depends(get_session)) -> NotificationDAO:

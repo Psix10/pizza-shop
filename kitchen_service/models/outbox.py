@@ -1,3 +1,4 @@
+# kitchen_service/models/outbox.py
 from __future__ import annotations
 
 from datetime import datetime, UTC
@@ -7,19 +8,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.db import Base
 
-from sqlalchemy import DateTime, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
 
 class OutboxEvent(Base):
     __tablename__ = "outbox_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # что за агрегат и его id
     aggregate_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     aggregate_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
 
-    # тип доменного события — например: order.created, order.cancelled
     event_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
 
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)

@@ -1,23 +1,29 @@
 from contextlib import asynccontextmanager
+import os
+import asyncio
 
 from fastapi import FastAPI
 
 from api.internal_events_router import router as internal_events_router
 from api.kitchen_router import router as kitchen_router
-from db.db import init_models, async_session
+from db.db import init_models
 from services.event_consumer import KitchenEventConsumer
 from common.correlation import correlation_id_middleware
 
+RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
 
-consumer = KitchenEventConsumer(async_session)
+consumer = KitchenEventConsumer(rabbit_url=RABBITMQ_URL)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_models()
-    await consumer.start()
-    yield
-    await consumer.close()
+    task = asyncio.create_task(consumer.start())
+    try:
+        yield
+    finally:
+        await consumer.close()
+        task.cancel()
 
 
 app = FastAPI(title="Kitchen Service", lifespan=lifespan)

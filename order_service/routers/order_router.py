@@ -152,7 +152,10 @@ async def checkout(
     await idempotency_dao.attach_order(existing_key, order.id)
 
     event = order_dao.build_order_created_event(order)
+
     await order_dao.save_outbox_event(
+        aggregate_type="order",
+        aggregate_id=str(order.id),
         event_name=event.event_name,
         payload=event.model_dump(mode="json"),
     )

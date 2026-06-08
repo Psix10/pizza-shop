@@ -15,6 +15,7 @@ class KitchenJob(Base):
     order_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True, index=True)
     store_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     address_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    customer_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     priority_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="queued")
     queued_at: Mapped[datetime] = mapped_column(

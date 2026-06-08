@@ -49,10 +49,10 @@ async def init_seed():
             return
 
         # Создаём базовую роль "user", если её нет
-        result = await session.execute(select(Role).where(Role.name == "user"))
+        result = await session.execute(select(Role).where(Role.name == "admin"))
         role = result.scalar_one_or_none()
         if role is None:
-            role = Role(name="user", description="Default customer role")
+            role = Role(name="admin", description="Default admin role")
             session.add(role)
             await session.flush()
             await session.refresh(role)

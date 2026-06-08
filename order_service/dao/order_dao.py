@@ -198,17 +198,23 @@ class OrderDAO:
     
     async def save_outbox_event(
         self,
+        aggregate_type: str,
+        aggregate_id: str,
         event_name: str,
         payload: dict,
     ) -> OutboxEvent:
-        outbox_event = OutboxEvent(
+        event = OutboxEvent(
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
             event_name=event_name,
-            payload_json=json.dumps(payload, ensure_ascii=False, default=str),
+            payload_json=json.dumps(payload, default=str),
             status="pending",
+            retry_count=0,
+            created_at=datetime.now(UTC),
         )
-        self.session.add(outbox_event)
+        self.session.add(event)
         await self.session.flush()
-        return outbox_event
+        return event
     
     def build_order_created_event(self, order: Order) -> OrderCreatedEvent:
         return OrderCreatedEvent(

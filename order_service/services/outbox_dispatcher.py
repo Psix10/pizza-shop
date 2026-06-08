@@ -15,7 +15,7 @@ class OutboxDispatcher:
     def __init__(self, poll_interval: float = 2.0, batch_size: int = 50):
         self.poll_interval = poll_interval
         self.batch_size = batch_size
-        self.relay = BrokerEventRelay()
+        self.relay = BrokerEventRelay(source_service="order_service")
         self._running = True
 
     def stop(self) -> None:

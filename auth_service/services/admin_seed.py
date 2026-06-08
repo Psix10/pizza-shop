@@ -12,6 +12,7 @@ ROLE_DEFINITIONS = {
     "customer": "Customer / buyer role",
     "cook": "Kitchen staff role",
     "courier": "Delivery staff role",
+    "admin": "Administrator role with full access",
 }
 
 # Permissions по доменам пиццерии
@@ -77,6 +78,7 @@ ROLE_PERMISSIONS = {
         "order:read_own",  # чтение только своих доставляемых заказов
         "store:read",
     },
+    "admin": set(PERMISSION_DEFINITIONS.keys()),
 }
 
 

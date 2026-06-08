@@ -71,7 +71,7 @@ async def complete_kitchen_job(
 ):
     correlation_id = getattr(request.state, "correlation_id", None)
 
-    job = await dao.complete_job(job_id)
+    job = await dao.complete_job(job_id, correlation_id=correlation_id)
     if not job:
         raise HTTPException(status_code=404, detail="Kitchen job not found")
 

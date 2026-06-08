@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,10 +62,15 @@ async def accept_delivery_job(
 @router.post("/{job_id}/pickup", response_model=DeliveryJobRead)
 async def pickup_delivery_job(
     job_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     dao: DeliveryDAO = Depends(get_delivery_dao),
 ):
-    job = await dao.pickup_job(job_id)
+    user_id_header = request.headers.get("x-user-id")
+    courier_id = int(user_id_header) if user_id_header else None
+    correlation_id = getattr(request.state, "correlation_id", None)
+
+    job = await dao.pickup_job(job_id, courier_id=courier_id, correlation_id=correlation_id)
     if not job:
         raise HTTPException(status_code=404, detail="Delivery job not found")
 
@@ -76,20 +81,25 @@ async def pickup_delivery_job(
         )
     except httpx.HTTPError:
         raise HTTPException(
-            status_code=502,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Order service unavailable",
         )
 
     await session.commit()
     return job
 
+
 @router.post("/{job_id}/complete", response_model=DeliveryJobRead)
 async def complete_delivery_job(
     job_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     dao: DeliveryDAO = Depends(get_delivery_dao),
 ):
-    job = await dao.complete_job(job_id)
+    user_id_header = request.headers.get("x-user-id")
+    courier_id = int(user_id_header) if user_id_header else None
+
+    job = await dao.complete_job(job_id, courier_id=courier_id)
     if not job:
         raise HTTPException(status_code=404, detail="Delivery job not found")
 
@@ -100,7 +110,7 @@ async def complete_delivery_job(
         )
     except httpx.HTTPError:
         raise HTTPException(
-            status_code=502,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Order service unavailable",
         )
 

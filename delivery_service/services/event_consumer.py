@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -7,15 +9,22 @@ from typing import Any
 import aio_pika
 from aio_pika import ExchangeType, IncomingMessage
 
+from db.db import async_session
+from dao.delivery_dao import DeliveryDAO
+from schemas.delivery import DeliveryJobCreateInternal
 from services.order_client import update_order_status
 
 logger = logging.getLogger(__name__)
 
-
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
 RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "domain_events")
-DELIVERY_QUEUE_NAME = os.getenv("DELIVERY_QUEUE_NAME", "delivery.order_created")
+DELIVERY_QUEUE_NAME = os.getenv("DELIVERY_QUEUE_NAME", "delivery.events")
+
 ORDER_CREATED_ROUTING_KEY = os.getenv("ORDER_CREATED_ROUTING_KEY", "order.created")
+KITCHEN_ORDER_READY_ROUTING_KEY = os.getenv(
+    "KITCHEN_ORDER_READY_ROUTING_KEY",
+    "kitchen.order.ready",
+)
 
 
 class DeliveryEventConsumer:
@@ -46,14 +55,17 @@ class DeliveryEventConsumer:
         )
 
         await self._queue.bind(exchange, routing_key=ORDER_CREATED_ROUTING_KEY)
+        await self._queue.bind(exchange, routing_key=KITCHEN_ORDER_READY_ROUTING_KEY)
+
         self._consume_tag = await self._queue.consume(self._on_message)
         self._started = True
 
         logger.info(
-            "DeliveryEventConsumer started: queue=%s exchange=%s routing_key=%s",
+            "DeliveryEventConsumer started: queue=%s exchange=%s routing_keys=[%s,%s]",
             DELIVERY_QUEUE_NAME,
             RABBITMQ_EXCHANGE,
             ORDER_CREATED_ROUTING_KEY,
+            KITCHEN_ORDER_READY_ROUTING_KEY,
         )
 
     async def close(self) -> None:
@@ -83,34 +95,114 @@ class DeliveryEventConsumer:
 
     async def _on_message(self, message: IncomingMessage) -> None:
         async with message.process():
-            payload = self._decode_message(message)
+            envelope = self._decode_message(message)
 
-            event_name = payload.get("event_name")
-            if event_name and event_name != "order.created":
+            event_name = envelope.get("event_name")
+            data = envelope.get("data") or envelope.get("payload") or {}
+            metadata = envelope.get("metadata") or {}
+
+            correlation_id = self._extract_correlation_id(message, envelope, metadata)
+
+            if event_name == "order.created":
+                await self._handle_order_created(data, correlation_id, envelope)
+            elif event_name == "kitchen.order.ready":
+                await self._handle_kitchen_order_ready(data, correlation_id, envelope)
+            else:
                 logger.info("Skipping unsupported event_name=%s", event_name)
                 return
 
-            order_id = payload.get("order_id") or payload.get("id")
-            correlation_id = self._extract_correlation_id(message, payload)
+    async def _handle_order_created(
+        self,
+        data: dict[str, Any],
+        correlation_id: str | None,
+        envelope: dict[str, Any],
+    ) -> None:
+        order_id = (
+            envelope.get("order_id")
+            or data.get("order_id")
+            or envelope.get("aggregate_id")
+            or data.get("id")
+        )
 
-            if order_id is None:
-                logger.warning("Received message without order_id: %s", payload)
-                return
+        if order_id is None:
+            logger.warning("order.created without order_id: %s", envelope)
+            return
 
-            logger.info(
-                "Received order.created for order_id=%s correlation_id=%s",
-                order_id,
-                correlation_id,
+        logger.info(
+            "Received order.created for order_id=%s correlation_id=%s",
+            order_id,
+            correlation_id,
+        )
+
+        await update_order_status(
+            order_id=int(order_id),
+            status_value="delivery_pending",
+            changed_by=None,
+            correlation_id=correlation_id,
+        )
+
+        logger.info("Order %s marked as delivery_pending", order_id)
+
+    async def _handle_kitchen_order_ready(
+        self,
+        data: dict[str, Any],
+        correlation_id: str | None,
+        envelope: dict[str, Any],
+    ) -> None:
+        # kitchen.order.ready приходит от outbox кухни в формате:
+        # { "payload": { order_id, store_id, address_id, priority_score }, "metadata": {...} }
+        payload = envelope.get("payload") or data
+
+        order_id = (
+            payload.get("order_id")
+            or envelope.get("order_id")
+            or envelope.get("aggregate_id")
+            or data.get("order_id")
+        )
+        store_id = payload.get("store_id")
+        address_id = payload.get("address_id")
+        priority_score = payload.get("priority_score")
+
+        if order_id is None or store_id is None or address_id is None:
+            logger.warning(
+                "kitchen.order.ready missing fields: %s",
+                {"order_id": order_id, "store_id": store_id, "address_id": address_id},
             )
+            return
 
-            await update_order_status(
+        logger.info(
+            "Received kitchen.order.ready for order_id=%s correlation_id=%s",
+            order_id,
+            correlation_id,
+        )
+
+        async with async_session() as session:
+            dao = DeliveryDAO(session)
+
+            job_data = DeliveryJobCreateInternal(
                 order_id=int(order_id),
-                status_value="delivery_pending",
-                changed_by=None,
-                correlation_id=correlation_id,
+                store_id=int(store_id),
+                address_id=int(address_id),
+                customer_id=payload.get("customer_id"),
+                priority_score=priority_score,
             )
 
-            logger.info("Order %s marked as delivery_pending", order_id)
+            job = await dao.create_delivery_job(job_data)
+            await session.commit()
+
+        await update_order_status(
+            order_id=int(order_id),
+            status_value="delivery_assigned",  # подгони под свои статусы, если надо
+            changed_by=None,
+            correlation_id=correlation_id,
+        )
+
+        logger.info(
+            "DeliveryJob created id=%s for order_id=%s (status=%s)",
+            job.id,
+            order_id,
+            job.status,
+        )
 
     @staticmethod
     def _decode_message(message: IncomingMessage) -> dict[str, Any]:
@@ -123,7 +215,8 @@ class DeliveryEventConsumer:
     @staticmethod
     def _extract_correlation_id(
         message: IncomingMessage,
-        payload: dict[str, Any],
+        envelope: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
     ) -> str | None:
         if message.correlation_id:
             return str(message.correlation_id)
@@ -132,7 +225,11 @@ class DeliveryEventConsumer:
         if "x-correlation-id" in headers:
             return str(headers["x-correlation-id"])
 
-        if "correlation_id" in payload:
-            return str(payload["correlation_id"])
+        metadata = metadata or envelope.get("metadata") or {}
+        if "correlation_id" in metadata:
+            return str(metadata["correlation_id"])
+
+        if "correlation_id" in envelope:
+            return str(envelope["correlation_id"])
 
         return None
